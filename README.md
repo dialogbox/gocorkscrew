@@ -1,6 +1,6 @@
 # Proxy command for ssh over HTTPS proxy
 
-`goproxy` is command that inspired by corkscrew (https://github.com/bryanpkc/corkscrew) but it supports HTTPS.
+`goproxy` is a command that inspired by corkscrew (https://github.com/bryanpkc/corkscrew) but it supports HTTPS.
 
 ## Install
 

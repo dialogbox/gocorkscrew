@@ -3,13 +3,13 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
-	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -90,40 +90,48 @@ func (c *HTTPProxyPipeline) Open(clientReader io.Reader, clientWriter io.Writer)
 
 	logrus.Info("Proxy connection established")
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	var returnStatus error
-	go func() {
-		defer wg.Done()
-		_, err := io.Copy(clientWriter, conn)
-		if err == io.EOF {
-			return
-		}
-		if err != nil {
-			returnStatus = errors.Wrap(err, "Unable to transfer data from client to proxy server")
-			return
-		}
-	}()
+	errchan := make(chan error, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	go func() {
-		defer wg.Done()
-		io.Copy(conn, clientReader)
-		if err == io.EOF {
+	go func(ctx context.Context) {
+		defer logrus.Info("Proxy -> Client pipe is closed")
+		select {
+		case <-ctx.Done():
 			return
+		default:
+			_, err := io.Copy(clientWriter, conn)
+			if err != nil && err != io.EOF {
+				errchan <- errors.Wrap(err, "Unable to transfer data from client to proxy server")
+			} else {
+				errchan <- nil
+			}
 		}
-		if err != nil {
-			returnStatus = errors.Wrap(err, "Unable to transfer data from proxy server to client")
+	}(ctx)
+
+	go func(ctx context.Context) {
+		defer logrus.Info("Client -> Proxy pipe is closed")
+		select {
+		case <-ctx.Done():
 			return
+		default:
+			_, err := io.Copy(conn, clientReader)
+			if err != nil && err != io.EOF {
+				errchan <- errors.Wrap(err, "Unable to transfer data from proxy server to client")
+			} else {
+				errchan <- nil
+			}
 		}
-	}()
+	}(ctx)
 
-	wg.Wait()
-
-	if returnStatus != nil {
-		return returnStatus
+	err = <-errchan
+	if err != nil {
+		return err
 	}
-
-	logrus.Info("Proxy connection closed")
+	err = <-errchan
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
