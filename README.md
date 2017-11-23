@@ -1,11 +1,11 @@
 # Proxy command for ssh over HTTPS proxy
 
-`goproxy` is a command that inspired by corkscrew (https://github.com/bryanpkc/corkscrew) but it supports HTTPS.
+`gocorkscrew` is a command that inspired by corkscrew (https://github.com/bryanpkc/corkscrew) but it supports HTTPS.
 
 ## Install
 
 ```
-go get github.com/dialogbox/goproxy
+go get github.com/dialogbox/gocorkscrew
 ```
 
 ## Usage
@@ -15,13 +15,13 @@ Adds proxycommand settings to .ssh/config
 Host host01
   User username
   HostName host01.resolvable.name.com
-  ProxyCommand goproxy https your.https.proxy.com 443 %h %p
+  ProxyCommand gocorkscrew http your.https.proxy.com 80 %h %p
 
 Host host02
   User username
   HostName host02.resolvable.name.com
   PasswordAuthentication no
-  ProxyCommand goproxy https your.https.proxy.com 443 %h %p
+  ProxyCommand gocorkscrew https your.https.proxy.com 443 %h %p
 ```
 
 Now, you can connect using ssh command like usual.
